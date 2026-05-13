@@ -1,0 +1,21 @@
+# Personal financial data — NEVER commit
+# (root-anchored so templates/profile.template.md remains tracked)
+/profile.md
+/profile.*.md
+/inputs/
+/analysis/
+/debate/
+/plan/
+/plan-archive/
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Claude Code session artifacts (defensive)
+.claude/cache/
+.claude/sessions/
