@@ -27,3 +27,11 @@ v3/
 v4/
 *.pdf
 questrade*.*
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Generated portfolio reports (build artifacts)
+/reports/
