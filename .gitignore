@@ -19,3 +19,11 @@
 # Claude Code session artifacts (defensive)
 .claude/cache/
 .claude/sessions/
+.worktrees/
+.venv/
+v1/
+v2/
+v3/
+v4/
+*.pdf
+questrade*.*
