@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolio Report — {{ report_date }}</title>
+  {{ plotlyjs | safe }}
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; background: #f5f5f5; color: #222; }
+    .header { background: #1a1a2e; color: white; padding: 24px 40px; display: flex; align-items: center; gap: 40px; flex-wrap: wrap; }
+    .header h1 { margin: 0; font-size: 1.4rem; font-weight: 600; }
+    .metric { text-align: center; }
+    .metric .value { font-size: 1.8rem; font-weight: 700; }
+    .metric .label { font-size: 0.8rem; opacity: 0.7; text-transform: uppercase; }
+    .badge { padding: 6px 16px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; }
+    .badge.green { background: #22c55e; color: white; }
+    .badge.red { background: #ef4444; color: white; }
+    .disclaimer { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px 20px; margin: 16px 40px; font-size: 0.85rem; }
+    .section { margin: 24px 40px; }
+    .section h2 { font-size: 1.1rem; font-weight: 600; color: #333; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
+    .charts-row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .charts-row > div { flex: 1; min-width: 280px; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    th { background: #f9fafb; font-size: 0.8rem; text-transform: uppercase; color: #6b7280; padding: 10px 16px; text-align: left; }
+    td { padding: 10px 16px; border-top: 1px solid #f3f4f6; font-size: 0.9rem; }
+    .green { color: #16a34a; } .amber { color: #d97706; } .red { color: #dc2626; }
+    .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; }
+    .card h3 { margin: 0 0 16px; font-size: 1rem; font-weight: 600; }
+    .positive { color: #16a34a; } .negative { color: #dc2626; }
+  </style>
+</head>
+<body>
+
+<!-- Section 1: Header -->
+<div class="header">
+  <div><h1>Portfolio Report</h1><div style="opacity:0.7;font-size:0.85rem">{{ report_date }}</div></div>
+  <div class="metric"><div class="value">${{ "{:,.0f}".format(total_value_cad) }}</div><div class="label">Total CAD</div></div>
+  {% if delta_cad is not none %}
+  <div class="metric">
+    <div class="value {{ 'positive' if delta_cad >= 0 else 'negative' }}">{{ '+' if delta_cad >= 0 else '' }}${{ "{:,.0f}".format(delta_cad) }}</div>
+    <div class="label">Since Last Report</div>
+  </div>
+  {% endif %}
+  <div class="badge {{ 'green' if status == 'on_track' else 'red' }}">{{ '&#10003; On Track' if status == 'on_track' else '&#9888; Attention Needed' }}</div>
+</div>
+
+<div class="disclaimer">&#9888;&#65039; Not professional financial advice. Verify with a fee-only Quebec-licensed planner before acting.</div>
+
+<!-- Section 2: Portfolio Summary -->
+<div class="section">
+  <h2>Portfolio Summary</h2>
+  <div class="charts-row">
+    <div>{{ allocation_donut_html | safe }}</div>
+    <div>{{ geo_bar_html | safe }}</div>
+    <div>{{ sector_bar_html | safe }}</div>
+  </div>
+</div>
+
+<!-- Section 3: Portfolio Value Over Time -->
+<div class="section">
+  <h2>Portfolio Value Over Time</h2>
+  {{ value_chart_html | safe }}
+  {% if snapshot_count == 1 %}<p style="color:#6b7280;font-size:0.85rem">Only one data point — run the report again next period to see trends.</p>{% endif %}
+</div>
+
+<!-- Section 4: Per-Ticker Performance -->
+<div class="section">
+  <h2>Per-Ticker Performance</h2>
+  <div class="charts-row">
+    {% for ticker, chart_html in ticker_charts.items() %}
+    <div style="min-width:400px">{{ chart_html | safe }}</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Section 5: Allocation Drift -->
+<div class="section">
+  <h2>Allocation Drift</h2>
+  {% for account_key, account_data in accounts.items() %}
+  <div class="card">
+    <h3>{{ account_data.label }}</h3>
+    <table>
+      <thead><tr><th>Ticker</th><th>Target %</th><th>Current %</th><th>Drift</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+      {% for ticker, drift_data in account_data.drift.items() %}
+      <tr>
+        <td><strong>{{ ticker }}</strong></td>
+        <td>{{ "{:.1f}".format(drift_data.target * 100) }}%</td>
+        <td>{{ "{:.1f}".format(drift_data.actual * 100) }}%</td>
+        <td class="{{ drift_data.status }}">{{ '+' if drift_data.drift >= 0 else '' }}{{ "{:.1f}".format(drift_data.drift * 100) }}%</td>
+        <td>{% if drift_data.status == 'green' %}&#129002;{% elif drift_data.status == 'amber' %}&#129001;{% else %}&#128308;{% endif %}</td>
+        <td>{% if drift_data.rebalance_trade %}{{ drift_data.rebalance_trade }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Section 6: Account Details -->
+<div class="section">
+  <h2>Account Details</h2>
+  {% for account_key, account_data in accounts.items() %}
+  <div class="card">
+    <h3>{{ account_data.label }}
+      {% if account_data.contribution_room_remaining %}<span style="font-weight:normal;font-size:0.85rem;color:#6b7280"> &middot; Contribution room: ${{ "{:,.0f}".format(account_data.contribution_room_remaining) }}</span>{% endif %}
+    </h3>
+    <table>
+      <thead><tr><th>Ticker</th><th>Shares</th><th>Avg Cost</th><th>Current Price</th><th>Gain/Share</th><th>Gain %</th><th>Value (CAD)</th></tr></thead>
+      <tbody>
+      {% for ticker, h in account_data.holdings.items() %}
+      <tr>
+        <td><strong>{{ ticker }}</strong></td>
+        <td>{{ h.shares }}</td>
+        <td>{{ h.avg_cost_currency }} {{ "{:.2f}".format(h.avg_cost_per_share) }}</td>
+        <td>{{ h.price_currency }} {{ "{:.2f}".format(h.current_price) }}</td>
+        {% if h.is_cash_etf %}
+        <td colspan="2" style="color:#6b7280">Yield: {{ h.yield_pct }}%</td>
+        {% else %}
+        <td class="{{ 'positive' if h.gain_loss_per_share >= 0 else 'negative' }}">{{ '+' if h.gain_loss_per_share >= 0 else '' }}{{ "{:.2f}".format(h.gain_loss_per_share) }}</td>
+        <td class="{{ 'positive' if h.gain_loss_pct >= 0 else 'negative' }}">{{ '+' if h.gain_loss_pct >= 0 else '' }}{{ "{:.2f}".format(h.gain_loss_pct) }}%</td>
+        {% endif %}
+        <td>${{ "{:,.2f}".format(h.value_cad) }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+</div>
+
+</body>
+</html>
