@@ -19,6 +19,7 @@
 # Claude Code session artifacts (defensive)
 .claude/cache/
 .claude/sessions/
+.claude/scheduled_tasks.lock
 .worktrees/
 .venv/
 v1/
@@ -35,3 +36,7 @@ __pycache__/
 
 # Generated portfolio reports (build artifacts)
 /reports/
+# payments/ personal financial data — keep only source files
+/payments/paystubs.json
+/payments/*.pdf
+portfolio/portfolio.json

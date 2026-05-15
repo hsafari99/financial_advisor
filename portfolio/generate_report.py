@@ -33,6 +33,51 @@ CASH_ETFS = {"CASH.TO"}
 CASH_TO_YIELD_PCT = 3.37
 
 
+def _recompute_contributed(data: dict) -> None:
+    for acc in data["accounts"].values():
+        total = 0.0
+        for holding in acc["holdings"]:
+            for p in holding["purchases"]:
+                if p["currency"] == "CAD":
+                    total += p["shares"] * p["price"]
+                elif p["currency"] == "USD":
+                    total += p["shares"] * p["price"] * p.get("usd_cad_rate", 1.0)
+        cash = acc.get("cash", {})
+        total += cash.get("CAD", 0.0)
+        total += cash.get("USD", 0.0) * cash.get("usd_cad_rate", 1.0)
+        acc["total_contributed_cad"] = round(total, 2)
+
+
+def update_cash(
+    portfolio_path: Path = PORTFOLIO_PATH,
+    account: str = None,
+    cad: float = None,
+    usd: float = None,
+    usd_cad_rate: float = None,
+):
+    data = json.loads(Path(portfolio_path).read_text())
+
+    if account not in data["accounts"]:
+        raise ValueError(f"Unknown account: {account}. Valid: {list(data['accounts'].keys())}")
+
+    cash = data["accounts"][account].setdefault("cash", {"CAD": 0.0, "USD": 0.0})
+    if cad is not None:
+        cash["CAD"] = round(cad, 2)
+    if usd is not None:
+        cash["USD"] = round(usd, 2)
+    if usd_cad_rate is not None:
+        cash["usd_cad_rate"] = usd_cad_rate
+
+    _recompute_contributed(data)
+
+    tmp = tempfile.NamedTemporaryFile(
+        mode="w", dir=Path(portfolio_path).parent, delete=False, suffix=".tmp"
+    )
+    json.dump(data, tmp, indent=2)
+    tmp.close()
+    os.replace(tmp.name, portfolio_path)
+
+
 def add_purchase(
     portfolio_path: Path = PORTFOLIO_PATH,
     account: str = None,
@@ -67,6 +112,8 @@ def add_purchase(
             break
     else:
         holdings.append({"ticker": ticker, "purchases": [purchase_entry]})
+
+    _recompute_contributed(data)
 
     tmp = tempfile.NamedTemporaryFile(
         mode="w", dir=Path(portfolio_path).parent, delete=False, suffix=".tmp"
