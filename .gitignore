@@ -26,13 +26,18 @@ v1/
 v2/
 v3/
 v4/
+v5/
 *.pdf
 questrade*.*
+/user-portfolio-plan.md
 
 # Python bytecode
 __pycache__/
 *.pyc
 *.pyo
+
+# Log files
+*log.md
 
 # Generated portfolio reports (build artifacts)
 /reports/
@@ -40,3 +45,4 @@ __pycache__/
 /payments/paystubs.json
 /payments/*.pdf
 portfolio/portfolio.json
+portfolio/targets.json
